@@ -1,0 +1,40 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [master]
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  media:
+    name: PowerShell and media
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download pinned tools and verify vendor checksums
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./.github/install-test-tools.ps1
+      - name: Test synthetic media and source retention
+        shell: pwsh
+        run: |
+          & $env:PWSH -NoProfile -File ./tests/Test-Converter.ps1 -Ffmpeg $env:FFMPEG -Handbrake $env:HANDBRAKE
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  renovate:
+    name: Renovate config
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Validate Renovate configuration
+        run: |
+          version=$(node -p 'require("./.github/runtime-versions.json").renovate')
+          npx --yes --package="renovate@$version" renovate-config-validator --strict renovate.json
