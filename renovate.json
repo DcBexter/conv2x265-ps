@@ -1,0 +1,54 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "dependencyDashboard": false,
+  "platformAutomerge": true,
+  "vulnerabilityAlerts": { "enabled": true, "automerge": true },
+  "git-submodules": { "enabled": true },
+  "automerge": true,
+  "ignoreTests": false,
+  "automergeType": "pr",
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
+      "groupName": "compatible maintenance",
+      "automerge": true
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "automerge": true
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/runtime-versions\\.json$/"],
+      "matchStrings": ["\"powershell\":\\s*\"(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "PowerShell/PowerShell",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/runtime-versions\\.json$/"],
+      "matchStrings": ["\"ffmpeg\":\\s*\"(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "FFmpeg/FFmpeg",
+      "extractVersionTemplate": "^n(?<version>\\d+\\.\\d+(?:\\.\\d+)?)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/runtime-versions\\.json$/"],
+      "matchStrings": ["\"handbrake\":\\s*\"(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "HandBrake/HandBrake"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/runtime-versions\\.json$/"],
+      "matchStrings": ["\"renovate\":\\s*\"(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "npm",
+      "depNameTemplate": "renovate"
+    }
+  ]
+}
