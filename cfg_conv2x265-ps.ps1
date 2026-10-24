@@ -28,7 +28,7 @@ $script:garbage = the extensions of the files you want to delete in the format "
 $appendLog = $False will clear log at the beginning of every session, $True will append new session log to old session log 
 $keepSubs = $False will remove subtitles from converted files. $True will keep subtitles.
 $useOutPath = $False will use #mediaPath as the output folder. $True will output converted files to $outPath
-$outPath = If $useOutPath = $True, converted files will be written to this directory (no trailing "\")
+$outPath = If $useOutPath = $True, converted files retain their relative subfolders below this directory
 -----------------------------------------------------------------------------------------------------------------------#>
 $mediaPath = "C:\Path\To\Media\"
 $fileTypes = "*.mkv", "*.mp4", "*.avi", "*.flv", "*.mpeg", "*.ts"

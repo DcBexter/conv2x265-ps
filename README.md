@@ -27,7 +27,7 @@ pwsh.exe -NoProfile -File "C:\path\to\conv2x265-ps.ps1"
 | `$handbrakeDir` | Directory containing `HandBrakeCLI.exe`. |
 | `$logPath`, `$logName`, `$appendLog` | Log location and whether to append. |
 | `$keepSubs` | Keep subtitle streams when true; remove them when false. |
-| `$useOutPath`, `$outPath` | Write to this existing output directory when enabled; otherwise use source directory. Output names must be unique. |
+| `$useOutPath`, `$outPath` | Write below this output directory when enabled, preserving the media root's relative subfolders; otherwise use source directory. Missing output subfolders are created. |
 | `$plexIP` | Plex host and port, for optional refresh after validated conversion. |
 | `$plexToken` | Read from `PLEX_TOKEN` environment variable by default. Empty disables refresh. Never commit your token. |
 | `$collectGarbage`, `$script:garbage` | Optional deletion of matching ancillary files. Disabled by default. |
@@ -69,6 +69,12 @@ pwsh -NoProfile -File .\tests\Test-Converter.ps1 -Ffmpeg C:\ffmpeg\bin\ffmpeg.ex
 
 Tests use new temporary synthetic media only: threshold boundaries/opt-out, codec selection, output marker, real HandBrake fallback, corrupt/truncated outputs, data-stream rejection with byte-identical source retention, in-place HEVC, H.264, destination collision and lock cleanup. Plex refresh, production libraries, hardware encoders and network-filesystem behavior are not exercised.
 
-GitHub Actions runs Windows media tests and strict Renovate configuration validation on PRs, pushes to `master`, and weekly. Dependency review checks supported dependency manifests on PRs. Renovate updates pinned CI tools, Node and action digests. All Renovate dependency updates, including major, minor, patch, pin/digest, submodules and security updates, request automatic merge only after branch-required checks. Dependabot PRs also queue native automatic merge through a metadata-only workflow; product PRs are excluded. These workflows/schedules take effect after merge.
+GitHub Actions runs Windows media tests and strict Renovate configuration validation on PRs and explicit manual runs. Native branch rules require successful checks before merging; duplicate post-merge and weekly full test runs are omitted. Dependency review checks supported dependency manifests on PRs. Renovate updates pinned CI tools, Node and action digests. All Renovate dependency updates, including major, minor, patch, pin/digest, submodules and security updates, request automatic merge only after branch-required checks. Dependabot PRs also queue native automatic merge through a metadata-only workflow; product PRs are excluded.
 
 CodeQL scans GitHub Actions workflows. PowerShell itself is not a supported CodeQL language. This repository has no supported application package manifest for automatic dependency submission; FFmpeg/HandBrake executables and their native libraries are not covered by GitHub dependency vulnerability scanning. Renovate version checks and actual media CI cover those version pins instead. GitHub secret scanning/push protection, vulnerability alerts/security updates and private vulnerability reporting are repository settings, independent from this branch.
+
+## Upstream compatibility
+
+Reviewed against [BrianDMG/conv2mp4 on GitLab](https://gitlab.com/BrianDMG/conv2mp4/-/tree/beb048729d4281ae844ad28e943fc9e5ff2cc5e4) on 24 October 2026. That is the original project's current `main`; the GitHub mirror is older. This fork retains the Windows H.265/MKV workflow. Compatible fixes are ported selectively, without importing the Docker/WebUI or H.264/MP4 defaults.
+
+Upstream's output-subfolder preservation is now included: `media/Show A/episode.mp4` becomes `output/Show A/episode.mkv`, so equal names in different shows no longer collide. Paths use native argument arrays and literal filesystem operations, retaining existing handling of brackets/apostrophes. Existing destinations never authorize deleting a source; validated output, atomic in-place replacement and HEVC anti-loop guards remain stricter than upstream. These properties are covered by synthetic-media tests.

@@ -88,7 +88,7 @@ Static variables
 		{
 		}
 # Setup for file list loop
-	$testMediaPath = Test-Path $mediaPath
+	$testMediaPath = Test-Path -LiteralPath $mediaPath -PathType Container
 	If ($testMediaPath -eq $True)
 	{
 		$mPath = Get-Item -LiteralPath $mediaPath
@@ -98,7 +98,7 @@ Static variables
 		Write-Output "`nPath not found: $mediaPath" | Tee-Object -filepath $log -append
 		Write-Output "Ensure the path in `$mediaPath exists and is accessible." | Tee-Object -filepath $log -append
 		Write-Output "Aborting script." | Tee-Object -filepath $log -append
-		Exit
+		throw 'Media root must be an existing directory.'
 	}
 	$b=0
 	$fileList = Get-ChildItem -LiteralPath $mPath.FullName -File -Recurse | Where-Object { $name = $_.Name; @($fileTypes | Where-Object { $name -like $_ }).Count -gt 0 -and $name -notlike "*.conv2x265-*.mkv" } | ForEach-Object {$b++; If ($b -eq 1){Write-Host -NoNewLine "`rFound $b file so far..."} Else{Write-Host -NoNewLine "`rFound $b files so far..." -foregroundcolor green};$_}
@@ -604,7 +604,8 @@ Begin search loop
     foreach ($file in $fileList) {
         $i++
         $oldFile = $file.FullName
-        $finalFile = if ($useOutPath) { Join-Path $outPath ($file.BaseName + '.mkv') } else { Join-Path $file.DirectoryName ($file.BaseName + '.mkv') }
+        $targetDirectory = if ($useOutPath) { Join-Path $outPath ([IO.Path]::GetRelativePath($mPath.FullName, $file.DirectoryName)) } else { $file.DirectoryName }
+        $finalFile = Join-Path $targetDirectory ($file.BaseName + '.mkv')
         $inPlace = [IO.Path]::GetFullPath($oldFile) -eq [IO.Path]::GetFullPath($finalFile)
         if (-not $inPlace -and (Test-Path -LiteralPath $finalFile)) {
             Log "Output exists; retaining source: $oldFile"
@@ -621,6 +622,7 @@ Begin search loop
                 Log "Skipping HEVC MKV (below threshold, disabled, or already encoded): $oldFile"
                 continue
             }
+            if ($useOutPath) { [IO.Directory]::CreateDirectory($targetDirectory) | Out-Null }
             $script:durTotal += $script:duration
             $script:durTicksTotal += $script:durTicks
             if ($vCodecCMD -eq 'hevc' -and -not $reencodeHevc) {
