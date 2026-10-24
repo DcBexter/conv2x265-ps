@@ -46,7 +46,7 @@ Video re-encodes use existing CRF 18 quality setting: **threshold selects inputs
 
 ### Source protection
 
-Encoding writes to a unique temporary sibling. Exit status, HEVC codec, stream counts, duration (within 1% or 0.5 seconds, whichever is larger), and complete audio/video decoding must pass before promotion. Subtitle streams are copied in their native format for MKV. HandBrake output passes the same validation; unsupported streams cause failure with source retained.
+Inputs with data or unknown stream types are rejected before encoding, retaining the source unchanged. Encoding supported video/audio/subtitle/attachment inputs writes to a unique temporary sibling. Exit status, HEVC codec, stream counts, duration (within 1% or 0.5 seconds, whichever is larger), and complete audio/video decoding must pass before promotion. Subtitle streams are copied in their native format for MKV. HandBrake output passes the same validation; unsupported streams cause failure with source retained.
 
 In-place MKV conversion uses atomic `File.Replace`; unsupported filesystems fail while retaining source. Other containers are deleted only after validated MKV is moved to its final name. Existing unrelated outputs are skipped. Failures return nonzero for Task Scheduler, and normal/error exits release instance lock. A hard kill or power loss can leave lock/temp files: verify no converter is running before removing its lock, and review temporary files before deleting them. Temporary names are excluded from scans.
 
@@ -67,7 +67,7 @@ Create Windows Task Scheduler task under a user with access to configured paths:
 pwsh -NoProfile -File .\tests\Test-Converter.ps1 -Ffmpeg C:\ffmpeg\bin\ffmpeg.exe -Handbrake C:\HandBrake\HandBrakeCLI.exe
 ```
 
-Tests use new temporary synthetic media only: threshold boundaries/opt-out, codec selection, output marker, real HandBrake fallback, corrupt/truncated outputs, source retention, in-place HEVC, H.264, destination collision and lock cleanup. Plex refresh, production libraries, hardware encoders and network-filesystem behavior are not exercised.
+Tests use new temporary synthetic media only: threshold boundaries/opt-out, codec selection, output marker, real HandBrake fallback, corrupt/truncated outputs, data-stream rejection with byte-identical source retention, in-place HEVC, H.264, destination collision and lock cleanup. Plex refresh, production libraries, hardware encoders and network-filesystem behavior are not exercised.
 
 GitHub Actions runs Windows media tests and strict Renovate configuration validation on PRs, pushes to `master`, and weekly. Dependency review checks supported dependency manifests on PRs. Renovate updates pinned CI tools, Node and action digests. All Renovate dependency updates, including major, minor, patch, pin/digest, submodules and security updates, request automatic merge only after branch-required checks. Dependabot PRs also queue native automatic merge through a metadata-only workflow; product PRs are excluded. These workflows/schedules take effect after merge.
 

@@ -178,6 +178,9 @@ Functions
         $probeText = & $ffprobe -v error -show_format -show_streams -of json $oldFile
         if ($LASTEXITCODE -ne 0) { throw "ffprobe failed: $oldFile" }
         $script:sourceInfo = ($probeText -join "`n") | ConvertFrom-Json
+        if (@($script:sourceInfo.streams | Where-Object { $_.codec_type -notin @('video', 'audio', 'subtitle', 'attachment') }).Count -gt 0) {
+            throw "Unsupported stream type; source retained: $oldFile"
+        }
         $video = @($script:sourceInfo.streams | Where-Object codec_type -eq video)
         if ($video.Count -eq 0) { throw "No video stream: $oldFile" }
         $script:durationSeconds = [double]::Parse($script:sourceInfo.format.duration, [cultureinfo]::InvariantCulture)

@@ -53,7 +53,7 @@ try {
     Copy-Item -LiteralPath $source -Destination $sandbox
     function Write-Config([double]$threshold, [bool]$subs = $true) {
         $config = @{
-            mediaPath = $media; fileTypes = @('*.mp4', '*.mkv'); logPath = $sandbox
+            mediaPath = $media; fileTypes = @('*.mp4', '*.mkv', '*.ts'); logPath = $sandbox
             logName = 'test.log'; plexToken = ''; ffmpegBinDir = (Split-Path $Ffmpeg)
             handbrakeDir = (Split-Path $Handbrake); collectGarbage = $false
             appendLog = $false; keepSubs = $subs; useOutPath = $false; maxHevcMBPerHour = $threshold
@@ -113,6 +113,26 @@ try {
     Assert (@($info.streams | Where-Object codec_name -eq hevc).Count -eq 1) 'Silent H264 must convert to HEVC.'
     Assert (@($info.streams | Where-Object codec_name -eq subrip).Count -eq 1) 'Native MKV subtitle must survive.'
 
+    $telemetry = Join-Path $root 'telemetry.bin'
+    [IO.File]::WriteAllBytes($telemetry, [byte[]](1..128))
+    $withData = Join-Path $media 'broadcast.ts'
+    & $ffmpeg -v error -f lavfi -i 'testsrc2=size=128x96:rate=12' -f lavfi -i 'sine=frequency=440' -f data -i $telemetry -t 2 -map 0:v -map 1:a -map 2:0 -c:v libx264 -c:a aac -c:d copy -f mpegts $withData
+    Assert ($LASTEXITCODE -eq 0) 'Data-stream fixture creation failed.'
+    $info = (& $ffprobe -v error -show_streams -of json $withData | ConvertFrom-Json)
+    Assert (@($info.streams | Where-Object codec_type -eq data).Count -eq 1) 'Fixture must contain a real data stream.'
+    $dataHash = (Get-FileHash -LiteralPath $withData).Hash
+    Write-Config 0
+    & (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File (Join-Path $sandbox 'conv2x265-ps.ps1') *> (Join-Path $root 'data-failure.log')
+    Assert ($LASTEXITCODE -ne 0) 'Unsupported data stream must fail before encoding.'
+    Assert ((Get-FileHash -LiteralPath $withData).Hash -eq $dataHash) 'Data-stream source must remain byte-identical.'
+    Assert (-not (Test-Path -LiteralPath (Join-Path $media 'broadcast.mkv'))) 'Rejected data stream must produce no final output.'
+    Assert (@(Get-ChildItem -LiteralPath $media -Filter '*.conv2x265-*.mkv').Count -eq 0) 'Rejected data stream must leave no temporary output.'
+    Assert (-not (Test-Path -LiteralPath (Join-Path $sandbox 'conv2x265-ps.lock'))) 'Rejected data stream must release lock.'
+    $dataLog = Get-Content -Raw -LiteralPath (Join-Path $root 'data-failure.log')
+    Assert ($dataLog -match 'Unsupported stream type; source retained') 'Unsupported stream must report a clear refusal.'
+    Assert ($dataLog -notmatch 'Converted and validated|HandBrake|Finished') 'Rejected stream must not encode or report successful conversion.'
+    Remove-Item -LiteralPath $withData # This test's synthetic fixture; isolate later failure checks.
+
     $badFile = Join-Path $media 'invalid.mp4'
     Set-Content -LiteralPath $badFile -Value 'invalid source'
     $badHash = (Get-FileHash -LiteralPath $badFile).Hash
@@ -126,7 +146,7 @@ try {
     & (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File (Join-Path $sandbox 'conv2x265-ps.ps1') *> (Join-Path $root 'lock.log')
     Assert ($LASTEXITCODE -ne 0) 'Existing instance lock must prevent execution.'
     Assert (Test-Path -LiteralPath $lock) 'Converter must not remove another instance lock.'
-    Write-Output 'PASS: threshold boundaries, opt-out, codec selection, anti-loop marker, real HandBrake, validation rejection, in-place HEVC, H264, subtitles, silent video, collisions, invalid-source preservation and instance locks.'
+    Write-Output 'PASS: threshold boundaries, opt-out, codec selection, anti-loop marker, real HandBrake, validation rejection, in-place HEVC, H264, subtitles, silent video, data-stream source retention, collisions, invalid-source preservation and instance locks.'
 } finally {
     # Only this test's newly created, absolute temp directory may be deleted.
     $resolved = [IO.Path]::GetFullPath($root)
