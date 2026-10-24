@@ -1,13 +1,12 @@
 name: CI
 on:
   pull_request:
-  push:
-    branches: [master]
-  schedule:
-    - cron: '17 6 * * 1'
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   media:
     name: PowerShell and media

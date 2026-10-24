@@ -604,7 +604,8 @@ Begin search loop
     foreach ($file in $fileList) {
         $i++
         $oldFile = $file.FullName
-        $finalFile = if ($useOutPath) { Join-Path $outPath ($file.BaseName + '.mkv') } else { Join-Path $file.DirectoryName ($file.BaseName + '.mkv') }
+        $targetDirectory = if ($useOutPath) { Join-Path $outPath ([IO.Path]::GetRelativePath($mPath.FullName, $file.DirectoryName)) } else { $file.DirectoryName }
+        $finalFile = Join-Path $targetDirectory ($file.BaseName + '.mkv')
         $inPlace = [IO.Path]::GetFullPath($oldFile) -eq [IO.Path]::GetFullPath($finalFile)
         if (-not $inPlace -and (Test-Path -LiteralPath $finalFile)) {
             Log "Output exists; retaining source: $oldFile"
@@ -621,6 +622,7 @@ Begin search loop
                 Log "Skipping HEVC MKV (below threshold, disabled, or already encoded): $oldFile"
                 continue
             }
+            if ($useOutPath) { [IO.Directory]::CreateDirectory($targetDirectory) | Out-Null }
             $script:durTotal += $script:duration
             $script:durTicksTotal += $script:durTicks
             if ($vCodecCMD -eq 'hevc' -and -not $reencodeHevc) {

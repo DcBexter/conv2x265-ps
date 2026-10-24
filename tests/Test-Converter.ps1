@@ -51,12 +51,12 @@ try {
     $media = Join-Path $sandbox 'media'
     New-Item -ItemType Directory -Path $media | Out-Null
     Copy-Item -LiteralPath $source -Destination $sandbox
-    function Write-Config([double]$threshold, [bool]$subs = $true) {
+    function Write-Config([double]$threshold, [bool]$subs = $true, [string]$destination = '') {
         $config = @{
             mediaPath = $media; fileTypes = @('*.mp4', '*.mkv', '*.ts'); logPath = $sandbox
             logName = 'test.log'; plexToken = ''; ffmpegBinDir = (Split-Path $Ffmpeg)
             handbrakeDir = (Split-Path $Handbrake); collectGarbage = $false
-            appendLog = $false; keepSubs = $subs; useOutPath = $false; maxHevcMBPerHour = $threshold
+            appendLog = $false; keepSubs = $subs; useOutPath = ($destination -ne ''); outPath = $destination; maxHevcMBPerHour = $threshold
         }
         $lines = foreach ($key in $config.Keys) {
             $value = $config[$key]
@@ -101,6 +101,31 @@ try {
     Run-Converter
     Assert (-not (Test-Path -LiteralPath $h264)) 'Validated H264 conversion must complete without subtitles.'
     Assert (Test-Path -LiteralPath $collision) 'H264 MKV output must exist.'
+
+    $destination = Join-Path $root 'output [1]'
+    [IO.Directory]::CreateDirectory($destination) | Out-Null
+    $nestedSources = foreach ($folder in @("show [1]'s", 'show [2]')) {
+        $directory = Join-Path $media $folder
+        [IO.Directory]::CreateDirectory($directory) | Out-Null
+        $inputPath = Join-Path $directory "episode [1]'s.mp4"
+        Copy-Item -LiteralPath $collision -Destination $inputPath
+        $inputPath
+    }
+    Write-Config 0 $true $destination
+    Run-Converter
+    foreach ($inputPath in $nestedSources) {
+        $relative = [IO.Path]::GetRelativePath($media, $inputPath)
+        $outputPath = Join-Path $destination ([IO.Path]::ChangeExtension($relative, '.mkv'))
+        Assert (Test-Path -LiteralPath $outputPath) 'Output must preserve subfolders for equal names, brackets and apostrophes.'
+        Assert (-not (Test-Path -LiteralPath $inputPath)) 'Only validated nested conversion may remove its source.'
+        $outputHash = (Get-FileHash -LiteralPath $outputPath).Hash
+        Copy-Item -LiteralPath $collision -Destination $inputPath
+        $inputHash = (Get-FileHash -LiteralPath $inputPath).Hash
+        Run-Converter
+        Assert ((Get-FileHash -LiteralPath $inputPath).Hash -eq $inputHash) 'Existing nested output must preserve source.'
+        Assert ((Get-FileHash -LiteralPath $outputPath).Hash -eq $outputHash) 'Existing nested output must remain unchanged.'
+        Remove-Item -LiteralPath $inputPath
+    }
 
     $subtitles = Join-Path $root 'captions.srt'
     Set-Content -LiteralPath $subtitles -Value "1`n00:00:00,000 --> 00:00:01,000`nSynthetic caption`n"
