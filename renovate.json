@@ -3,6 +3,10 @@
   "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
   "dependencyDashboard": false,
   "platformAutomerge": true,
+  "vulnerabilityAlerts": { "enabled": true, "automerge": true },
+  "git-submodules": { "enabled": true },
+  "automerge": true,
+  "ignoreTests": false,
   "automergeType": "pr",
   "packageRules": [
     {
@@ -12,7 +16,7 @@
     },
     {
       "matchUpdateTypes": ["major"],
-      "automerge": false
+      "automerge": true
     }
   ],
   "customManagers": [
