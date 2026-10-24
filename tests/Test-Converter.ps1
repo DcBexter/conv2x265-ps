@@ -127,6 +127,18 @@ try {
         Remove-Item -LiteralPath $inputPath
     }
 
+    $fileRoot = Join-Path $media 'file-root.mp4'
+    Copy-Item -LiteralPath $collision -Destination $fileRoot
+    $fileRootHash = (Get-FileHash -LiteralPath $fileRoot).Hash
+    Write-Config 0 $true $destination
+    Add-Content -LiteralPath (Join-Path $sandbox 'cfg_conv2x265-ps.ps1') -Value ('$mediaPath = ' + "'" + $fileRoot.Replace("'", "''") + "'")
+    & (Join-Path $PSHOME 'pwsh.exe') -NoProfile -File (Join-Path $sandbox 'conv2x265-ps.ps1') *> (Join-Path $root 'file-root.log')
+    Assert ($LASTEXITCODE -ne 0) 'A file cannot be the media root for relative output paths.'
+    Assert ((Get-FileHash -LiteralPath $fileRoot).Hash -eq $fileRootHash) 'Invalid media root must preserve source.'
+    Assert (-not (Test-Path -LiteralPath (Join-Path $root 'file-root.mkv'))) 'Output must not escape destination root.'
+    Assert (-not (Test-Path -LiteralPath (Join-Path $sandbox 'conv2x265-ps.lock'))) 'Invalid media root must release lock.'
+    Remove-Item -LiteralPath $fileRoot
+
     $subtitles = Join-Path $root 'captions.srt'
     Set-Content -LiteralPath $subtitles -Value "1`n00:00:00,000 --> 00:00:01,000`nSynthetic caption`n"
     $withSubs = Join-Path $media 'silent-subtitles.mkv'

@@ -88,7 +88,7 @@ Static variables
 		{
 		}
 # Setup for file list loop
-	$testMediaPath = Test-Path $mediaPath
+	$testMediaPath = Test-Path -LiteralPath $mediaPath -PathType Container
 	If ($testMediaPath -eq $True)
 	{
 		$mPath = Get-Item -LiteralPath $mediaPath
@@ -98,7 +98,7 @@ Static variables
 		Write-Output "`nPath not found: $mediaPath" | Tee-Object -filepath $log -append
 		Write-Output "Ensure the path in `$mediaPath exists and is accessible." | Tee-Object -filepath $log -append
 		Write-Output "Aborting script." | Tee-Object -filepath $log -append
-		Exit
+		throw 'Media root must be an existing directory.'
 	}
 	$b=0
 	$fileList = Get-ChildItem -LiteralPath $mPath.FullName -File -Recurse | Where-Object { $name = $_.Name; @($fileTypes | Where-Object { $name -like $_ }).Count -gt 0 -and $name -notlike "*.conv2x265-*.mkv" } | ForEach-Object {$b++; If ($b -eq 1){Write-Host -NoNewLine "`rFound $b file so far..."} Else{Write-Host -NoNewLine "`rFound $b files so far..." -foregroundcolor green};$_}
