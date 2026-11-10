@@ -1,6 +1,6 @@
 {
-  "powershell": "7.6.9",
+  "powershell": "7.7.0",
   "ffmpeg": "9.0.2",
   "handbrake": "1.11.2",
-  "renovate": "44.226.2"
+  "renovate": "44.227.4"
 }
